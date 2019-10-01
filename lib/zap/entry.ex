@@ -23,8 +23,6 @@ defmodule Zap.Entry do
 
   defstruct [:binary, :header, :entity, size: 0]
 
-  # deliberately copy the binary when reading it so that we can later release the binary
-
   @spec new(name :: String.t(), data :: binary()) :: t()
   def new(name, data) do
     {hframe, header} = encode_header(name)
@@ -41,12 +39,12 @@ defmodule Zap.Entry do
     )
   end
 
-  @spec consume(entry :: t(), bytes :: :infinity | pos_integer()) :: {t(), binary()}
+  @spec consume(entry :: t(), bytes :: :all | pos_integer()) :: {t(), binary()}
   def consume(%__MODULE__{size: 0} = entry, _bytes) do
     {entry, ""}
   end
 
-  def consume(%__MODULE__{} = entry, :infinity) do
+  def consume(%__MODULE__{} = entry, :all) do
     {%{entry | binary: "", size: 0}, entry.binary}
   end
 

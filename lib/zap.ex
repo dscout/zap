@@ -69,7 +69,7 @@ defmodule Zap do
 
       iex> zap = Zap.new()
       ...> zap = Zap.entry(zap, "a.txt", "a")
-      ...> {zap, _bytes} = Zap.flush(zap, :infinity)
+      ...> {zap, _bytes} = Zap.flush(zap, :all)
       ...> Zap.bytes(zap)
       0
   """
@@ -93,15 +93,15 @@ defmodule Zap do
       ...> |> byte_size()
       110
   """
-  @spec flush(zap :: t(), bytes :: pos_integer() | :infinity) :: {t(), binary()}
-  def flush(%__MODULE__{entries: entries} = zap, bytes \\ :infinity) do
+  @spec flush(zap :: t(), bytes :: pos_integer() | :all) :: {t(), binary()}
+  def flush(%__MODULE__{entries: entries} = zap, bytes \\ :all) do
     {iodata, entries, _} =
       Enum.reduce(entries, {[], [], bytes}, fn entry, {iodata, entries, bytes} ->
         {entry, binary} = Entry.consume(entry, bytes)
 
         next_bytes =
           cond do
-            bytes == :infinity -> :infinity
+            bytes == :all -> :all
             bytes - byte_size(binary) > 0 -> bytes - byte_size(binary)
             true -> 0
           end
@@ -123,5 +123,37 @@ defmodule Zap do
   @spec final(zap :: t()) :: binary()
   def final(%__MODULE__{entries: entries}) do
     Directory.encode(entries)
+  end
+
+  @doc false
+  @spec names(zap :: t()) :: [String.t()]
+  def names(%__MODULE__{entries: entries}) do
+    entries
+    |> Enum.reverse()
+    |> Enum.map(&(&1.header.name))
+  end
+
+  defimpl Collectable do
+    def into(original) do
+      fun = fn
+        zap, {:cont, {name, data}} -> Zap.entry(zap, name, data)
+        zap, :done -> zap
+        _zap, :halt -> :ok
+      end
+
+      {original, fun}
+    end
+  end
+
+  defimpl Inspect do
+    import Inspect.Algebra
+
+    alias Inspect.{List, Opts}
+
+    def inspect(zap, opts) do
+      opts = %Opts{opts | charlists: :as_lists}
+
+      concat(["#Zap<", List.inspect(Zap.names(zap), opts), ">"])
+    end
   end
 end

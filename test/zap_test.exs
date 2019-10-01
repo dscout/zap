@@ -4,18 +4,9 @@ defmodule ZapTest do
 
   doctest Zap
 
-  # properties
-  #
-  # the number of bytes is always greater than 0
-  # the same data is never flushed
-  # any sequence of binary can compose a valid zip archive (oracle)
   property "any sequence of binary data composes a valid zip archive" do
     check all entries <- nonempty(list_of(tuple({string(:ascii), binary()}))) do
-      # TODO: Implement Collectable
-      zap =
-        Enum.reduce(entries, Zap.new(), fn {name, data}, zap ->
-          Zap.entry(zap, name, data)
-        end)
+      zap = Enum.into(entries, Zap.new())
 
       assert Zap.bytes(zap) > 0
 
@@ -27,7 +18,31 @@ defmodule ZapTest do
 
       assert Zap.bytes(zap) == 0
 
-      # TODO: use zipinfo to verify things
+      verify_zipinfo(flush <> final)
     end
+  end
+
+  describe "Inspect" do
+    test "customizing the inspect output" do
+      zap =
+        Zap.new()
+        |> Zap.entry("a.txt", "aaaa")
+        |> Zap.entry("b.txt", "bbbb")
+        |> Zap.entry("c.txt", "cccc")
+
+      assert inspect(zap) == ~s(#Zap<["a.txt", "b.txt", "c.txt"]>)
+    end
+  end
+
+  defp verify_zipinfo(data) do
+    path = "archive.zip"
+
+    File.write!("archive.zip", data)
+
+    {_response, exit_code} = System.cmd("zipinfo", [path])
+
+    assert exit_code == 0
+  after
+    File.rm("archive.zip")
   end
 end
