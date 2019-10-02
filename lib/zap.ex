@@ -51,7 +51,7 @@ defmodule Zap do
   """
   @spec entry(zap :: t(), name :: binary(), data :: binary()) :: t()
   def entry(%__MODULE__{} = zap, name, data) when is_binary(name) and is_binary(data) do
-    %{zap | entries: [Entry.new(name, data) | zap.entries]}
+    %{zap | entries: List.flatten([zap.entries | [Entry.new(name, data)]])}
   end
 
   @doc """

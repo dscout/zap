@@ -1,33 +1,37 @@
 defmodule Zap.Directory do
   @moduledoc false
 
+  use Bitwise
+
   alias Zap.Entry
 
   @context %{frames: [], count: 0, offset: 0, size: 0}
+  @comment "Created by Zap"
 
   @spec encode([Entry.t()]) :: binary()
   def encode([%Entry{} | _] = entries) do
     context = build_context(entries)
 
-    frame =
-      <<
-        0x06054B50::size(32)-little,
-        # number of this disk
-        0::size(16)-little,
-        # number of the disk w/ ECD
-        0::size(16)-little,
-        # total number of entries in this disk
-        context[:count]::size(16)-little,
-        # total number of entries in the ECD
-        context[:count]::size(16)-little,
-        # size central directory
-        context[:size]::size(32)-little,
-        # offset central directory
-        context[:offset]::size(32)-little,
-        0::size(16)-little
-      >>
+    frame = <<
+      0x06054B50::little-size(32),
+      # number of this disk
+      0::little-size(16),
+      # number of the disk w/ ECD
+      0::little-size(16),
+      # total number of entries in this disk
+      context[:count]::little-size(16),
+      # total number of entries in the ECD
+      context[:count]::little-size(16),
+      # size central directory
+      context[:size]::little-size(32),
+      # offset central directory
+      context[:offset]::little-size(32),
+      # comment length
+      byte_size(@comment)::little-size(16),
+      @comment
+    >>
 
-    IO.iodata_to_binary([Enum.reverse(context.frames), frame])
+    IO.iodata_to_binary([context.frames, frame])
   end
 
   defp build_context(entries) do
@@ -43,47 +47,55 @@ defmodule Zap.Directory do
   end
 
   defp encode_header(context, %{header: header, entity: entity}) do
+    mtime = NaiveDateTime.from_erl!(:calendar.local_time())
+
     frame = <<
       # central file header signature
-      0x02014B50::size(32)-little,
+      0x02014B50::little-size(32),
       # version made by
-      20::size(16)-little,
+      52::little-size(16),
       # version to extract
-      0x0A::size(16)-little,
+      20::little-size(16),
       # general purpose flag
-      8::size(16)-little,
+      0x0800::little-size(16),
       # compression method
-      0::size(16)-little,
+      0::little-size(16),
       # last mod file time
-      0::size(16)-little,
-      # last mod file date
-      0::size(16)-little,
+      dos_time(mtime)::little-size(16),
+      # last mod date
+      dos_date(mtime)::little-size(16),
       # crc-32
-      entity[:crc]::size(32)-little,
+      entity[:crc]::little-size(32),
       # compressed size
-      entity[:csize]::size(32)-little,
+      entity[:csize]::little-size(32),
       # uncompressed size
-      entity[:usize]::size(32)-little,
+      entity[:usize]::little-size(32),
       # file name length
-      header[:nsize]::size(16)-little,
+      header[:nsize]::little-size(16),
       # extra field length
-      0::size(16)-little,
+      0::little-size(16),
       # file comment length
-      0::size(16)-little,
+      0::little-size(16),
       # disk number start
-      0::size(16)-little,
+      0::little-size(16),
       # internal file attribute
-      0::size(16)-little,
-      # external file attribute
-      0::size(32)-little,
+      0::little-size(16),
+      # external file attribute (unix permissions, rw-r--r--)
+      ((0o10 <<< 12 ||| (0o644 &&& 0o7777)) <<< 16)::little-size(32),
       # relative offset header
-      context[:offset]::size(32)-little
+      context[:offset]::little-size(32),
+      # file name
+      header[:name]::binary
     >>
 
-    %{
-      frame: [frame, header.name],
-      size: byte_size(frame) + header.nsize,
-      offset: header.size + entity.size
-    }
+    %{frame: frame, size: byte_size(frame), offset: header.size + entity.size}
+  end
+
+  defp dos_time(time) do
+    round(time.second / 2 + (time.minute <<< 5) + (time.hour <<< 11))
+  end
+
+  defp dos_date(time) do
+    round(time.day + (time.month <<< 5) + ((time.year - 1980) <<< 9))
   end
 end

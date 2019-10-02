@@ -30,7 +30,7 @@ defmodule ZapTest do
         |> Zap.entry("b.txt", "bbbb")
         |> Zap.entry("c.txt", "cccc")
 
-      assert inspect(zap) == ~s(#Zap<["a.txt", "b.txt", "c.txt"]>)
+      assert inspect(zap) == ~s(#Zap<["c.txt", "b.txt", "a.txt"]>)
     end
   end
 

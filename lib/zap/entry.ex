@@ -1,25 +1,27 @@
 defmodule Zap.Entry do
   @moduledoc false
 
+  use Bitwise
+
   @type header :: %{
-    size: non_neg_integer(),
-    name: String.t(),
-    nsize: non_neg_integer()
-  }
+          size: non_neg_integer(),
+          name: String.t(),
+          nsize: non_neg_integer()
+        }
 
   @type entity :: %{
-    crc: pos_integer(),
-    size: non_neg_integer(),
-    usize: non_neg_integer(),
-    csize: non_neg_integer()
-  }
+          crc: pos_integer(),
+          size: non_neg_integer(),
+          usize: non_neg_integer(),
+          csize: non_neg_integer()
+        }
 
   @type t :: %__MODULE__{
-    binary: iodata(),
-    entity: entity(),
-    header: header(),
-    size: non_neg_integer()
-  }
+          binary: iodata(),
+          entity: entity(),
+          header: header(),
+          size: non_neg_integer()
+        }
 
   defstruct [:binary, :header, :entity, size: 0]
 
@@ -63,30 +65,32 @@ defmodule Zap.Entry do
 
   defp encode_header(name) when is_binary(name) do
     nsize = byte_size(name)
+    mtime = NaiveDateTime.from_erl!(:calendar.local_time())
 
     frame = <<
       # local file header signature
-      0x04034B50::size(32)-little,
+      0x04034B50::little-size(32),
       # version needed to extract
-      0x0A::size(16)-little,
+      20::little-size(16),
       # general purpose bit flag
-      8::size(16)-little,
-      # compression method
-      0::size(16)-little,
+      0x0800::little-size(16),
+      # compression method (always 0, we aren't compressing currently)
+      0::little-size(16),
       # last mod time
-      0::size(16)-little,
+      dos_time(mtime)::little-size(16),
       # last mod date
-      0::size(16)-little,
+      dos_date(mtime)::little-size(16),
       # crc-32
-      0::size(32)-little,
+      0::little-size(32),
       # compressed size
-      0::size(32)-little,
+      0::little-size(32),
       # uncompressed size
-      0::size(32)-little,
+      0::little-size(32),
       # file name length
-      nsize::size(16)-little,
+      nsize::little-size(16),
       # extra field length
-      0::size(16)-little,
+      0::little-size(16),
+      # file name
       name::binary
     >>
 
@@ -99,15 +103,23 @@ defmodule Zap.Entry do
 
     frame = <<
       # local file entry signature
-      0x08074B50::size(32)-little,
+      0x08074B50::little-size(32),
       # crc-32 for the entity
-      crc::size(32)-little,
+      crc::little-size(32),
       # compressed size, just the size since we aren't compressing
-      size::size(32)-little,
+      size::little-size(32),
       # uncompressed size
-      size::size(32)-little
+      size::little-size(32)
     >>
 
     {frame, %{crc: crc, size: size + byte_size(frame), usize: size, csize: size}}
+  end
+
+  defp dos_time(time) do
+    round(time.second / 2 + (time.minute <<< 5) + (time.hour <<< 11))
+  end
+
+  defp dos_date(time) do
+    round(time.day + (time.month <<< 5) + ((time.year - 1980) <<< 9))
   end
 end
