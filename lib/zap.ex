@@ -125,6 +125,46 @@ defmodule Zap do
     Directory.encode(entries)
   end
 
+  @doc """
+  Stream an enumerable of `name`/`data` pairs into a zip structure and emit chunks of zip data.
+
+  The chunked output will be _at least_ the size of `chunk_size`, but they may be much larger. The
+  last emitted chunk automatically includes the central directory header, the closing set of
+  bytes.
+
+  ## Example
+
+      iex> %{"a.txt" => "aaaa", "b.txt" => "bbbb"}
+      ...> |> Zap.stream_chunks(8)
+      ...> |> Enum.to_list()
+      ...> |> IO.iodata_to_binary()
+      ...> |> :zip.table()
+      ...> |> elem(0)
+      :ok
+  """
+  @spec stream_chunks(enum :: Enumerable.t(), chunk_size :: pos_integer()) :: Enumerable.t()
+  def stream_chunks(enum, chunk_size \\ 1024 * 1024) when is_integer(chunk_size) do
+    chunk_fun = fn {name, data}, zap ->
+      zap = entry(zap, name, data)
+
+      if bytes(zap) > chunk_size do
+        {zap, flushed} = flush(zap, :all)
+
+        {:cont, flushed, zap}
+      else
+        {:cont, zap}
+      end
+    end
+
+    after_fun = fn zap ->
+      {zap, flushed} = flush(zap, :all)
+
+      {:cont, [flushed, final(zap)], zap}
+    end
+
+    Stream.chunk_while(enum, Zap.new(), chunk_fun, after_fun)
+  end
+
   @doc false
   @spec names(zap :: t()) :: [String.t()]
   def names(%__MODULE__{entries: entries}) do

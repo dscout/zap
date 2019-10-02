@@ -5,7 +5,7 @@ defmodule ZapTest do
   doctest Zap
 
   property "any sequence of binary data composes a valid zip archive" do
-    check all entries <- nonempty(list_of(tuple({string(:ascii), binary()}))) do
+    check all entries <- nonempty(list_of(tuple({name(), data()}))) do
       zap = Enum.into(entries, Zap.new())
 
       assert Zap.bytes(zap) > 0
@@ -34,15 +34,15 @@ defmodule ZapTest do
     end
   end
 
+  defp name do
+    binary(min_length: 1, max_length: 128)
+  end
+
+  defp data do
+    binary(min_length: 1)
+  end
+
   defp verify_zipinfo(data) do
-    path = "archive.zip"
-
-    File.write!("archive.zip", data)
-
-    {_response, exit_code} = System.cmd("zipinfo", [path])
-
-    assert exit_code == 0
-  after
-    File.rm("archive.zip")
+    assert {:ok, comment_and_files} = :zip.table(data)
   end
 end

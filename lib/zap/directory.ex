@@ -27,7 +27,7 @@ defmodule Zap.Directory do
         0::size(16)-little
       >>
 
-    IO.iodata_to_binary(Enum.reverse(context.frames) ++ [frame])
+    IO.iodata_to_binary([Enum.reverse(context.frames), frame])
   end
 
   defp build_context(entries) do
