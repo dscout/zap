@@ -21,7 +21,7 @@ File.rm("streamed.zip")
 gener_fun
 |> Stream.repeatedly()
 |> Stream.take(20)
-|> Zap.stream_chunks(2048)
+|> Zap.into_stream(2048)
 |> Stream.each(fn _ -> IO.inspect(:erlang.memory()[:binary]) end)
 |> Stream.each(write_fun)
 |> Stream.run()

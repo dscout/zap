@@ -1,24 +1,21 @@
 defmodule ZapTest do
-  use ExUnit.Case
+  use ExUnit.Case, async: true
+
   use ExUnitProperties
 
   doctest Zap
 
   property "any sequence of binary data composes a valid zip archive" do
-    check all entries <- nonempty(list_of(tuple({name(), data()}))) do
+    check all(entries <- nonempty(list_of(tuple({name(), data()})))) do
       zap = Enum.into(entries, Zap.new())
 
       assert Zap.bytes(zap) > 0
 
-      {zap, flush} = Zap.flush(zap)
-      final = Zap.final(zap)
-
-      assert byte_size(flush) > 0
-      assert byte_size(final) > 0
+      {zap, iodata} = Zap.to_iodata(zap)
 
       assert Zap.bytes(zap) == 0
 
-      verify_zipinfo(flush <> final)
+      verify_zipinfo(iodata)
     end
   end
 
@@ -43,6 +40,13 @@ defmodule ZapTest do
   end
 
   defp verify_zipinfo(data) do
-    assert {:ok, comment_and_files} = :zip.table(data)
+    assert {:ok, comment_and_files} = :zip.table(IO.iodata_to_binary(data))
+
+    file_count =
+      comment_and_files
+      |> Enum.map(&elem(&1, 0))
+      |> Enum.count(fn kind -> kind == :zip_file end)
+
+    assert file_count >= 1
   end
 end

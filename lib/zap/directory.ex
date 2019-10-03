@@ -81,7 +81,7 @@ defmodule Zap.Directory do
       # internal file attribute
       0::little-size(16),
       # external file attribute (unix permissions, rw-r--r--)
-      ((0o10 <<< 12 ||| (0o644 &&& 0o7777)) <<< 16)::little-size(32),
+      (0o10 <<< 12 ||| (0o644 &&& 0o7777)) <<< 16::little-size(32),
       # relative offset header
       context[:offset]::little-size(32),
       # file name

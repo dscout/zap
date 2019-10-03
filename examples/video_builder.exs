@@ -12,7 +12,7 @@ File.rm("videos.zip")
 
 paths
 |> Stream.map(fn path -> {Path.basename(path), File.read!(path)} end)
-|> Zap.stream_chunks(1024 * 1024)
+|> Zap.into_stream(1024 * 1024)
 |> Stream.each(fn _ -> IO.inspect(:erlang.memory()[:binary]) end)
 |> Stream.each(write_fun)
 |> Stream.run()

@@ -79,6 +79,32 @@ defmodule Zap do
   end
 
   @doc """
+  Output a complete iolist of data from a Zap struct.
+
+  This is a convenient way of combining the output from `flush/1` and `final/1`.
+
+  Though the function is called `to_iodata` it _also_ returns a zap struct because the struct is
+  modified when it is flushed.
+
+  ## Example
+
+      iex> Zap.new()
+      ...> |> Zap.entry("a.txt", "aaaa")
+      ...> |> Zap.entry("b.txt", "bbbb")
+      ...> |> Zap.to_iodata()
+      ...> |> elem(1)
+      ...> |> IO.iodata_length()
+      248
+  """
+  @spec to_iodata(zap :: t()) :: {t(), iodata()}
+  def to_iodata(%__MODULE__{} = zap) do
+    {zap, flush} = flush(zap)
+    {zap, final} = final(zap)
+
+    {zap, [flush, final]}
+  end
+
+  @doc """
   Flush a fixed number of bytes from the stored entries.
 
   Flushing is stateful, meaning the same data won't be flushed on successive calls.
@@ -90,12 +116,12 @@ defmodule Zap do
       ...> |> Zap.entry("b.txt", "bbbb")
       ...> |> Zap.flush()
       ...> |> elem(1)
-      ...> |> byte_size()
+      ...> |> IO.iodata_length()
       110
   """
-  @spec flush(zap :: t(), bytes :: pos_integer() | :all) :: {t(), binary()}
+  @spec flush(zap :: t(), bytes :: pos_integer() | :all) :: {t(), iodata()}
   def flush(%__MODULE__{entries: entries} = zap, bytes \\ :all) do
-    {iodata, entries, _} =
+    {flushed, entries, _} =
       Enum.reduce(entries, {[], [], bytes}, fn entry, {iodata, entries, bytes} ->
         {entry, binary} = Entry.consume(entry, bytes)
 
@@ -109,20 +135,15 @@ defmodule Zap do
         {[binary | iodata], [entry | entries], next_bytes}
       end)
 
-    flushed =
-      iodata
-      |> Enum.reverse()
-      |> IO.iodata_to_binary()
-
-    {%{zap | entries: Enum.reverse(entries)}, flushed}
+    {%{zap | entries: Enum.reverse(entries)}, Enum.reverse(flushed)}
   end
 
   @doc """
   Generate the final CDH (Central Directory Header), required to complete an archive.
   """
-  @spec final(zap :: t()) :: binary()
-  def final(%__MODULE__{entries: entries}) do
-    Directory.encode(entries)
+  @spec final(zap :: t()) :: {t(), iodata()}
+  def final(%__MODULE__{entries: entries} = zap) do
+    {zap, Directory.encode(entries)}
   end
 
   @doc """
@@ -135,15 +156,15 @@ defmodule Zap do
   ## Example
 
       iex> %{"a.txt" => "aaaa", "b.txt" => "bbbb"}
-      ...> |> Zap.stream_chunks(8)
+      ...> |> Zap.into_stream(8)
       ...> |> Enum.to_list()
       ...> |> IO.iodata_to_binary()
       ...> |> :zip.table()
       ...> |> elem(0)
       :ok
   """
-  @spec stream_chunks(enum :: Enumerable.t(), chunk_size :: pos_integer()) :: Enumerable.t()
-  def stream_chunks(enum, chunk_size \\ 1024 * 1024) when is_integer(chunk_size) do
+  @spec into_stream(enum :: Enumerable.t(), chunk_size :: pos_integer()) :: Enumerable.t()
+  def into_stream(enum, chunk_size \\ 1024 * 1024) when is_integer(chunk_size) do
     chunk_fun = fn {name, data}, zap ->
       zap = entry(zap, name, data)
 
@@ -157,20 +178,12 @@ defmodule Zap do
     end
 
     after_fun = fn zap ->
-      {zap, flushed} = flush(zap, :all)
+      {zap, iodata} = to_iodata(zap)
 
-      {:cont, [flushed, final(zap)], zap}
+      {:cont, iodata, zap}
     end
 
     Stream.chunk_while(enum, Zap.new(), chunk_fun, after_fun)
-  end
-
-  @doc false
-  @spec names(zap :: t()) :: [String.t()]
-  def names(%__MODULE__{entries: entries}) do
-    entries
-    |> Enum.reverse()
-    |> Enum.map(&(&1.header.name))
   end
 
   defimpl Collectable do
@@ -193,7 +206,13 @@ defmodule Zap do
     def inspect(zap, opts) do
       opts = %Opts{opts | charlists: :as_lists}
 
-      concat(["#Zap<", List.inspect(Zap.names(zap), opts), ">"])
+      concat(["#Zap<", List.inspect(names(zap), opts), ">"])
+    end
+
+    defp names(%{entries: entries}) do
+      entries
+      |> Enum.reverse()
+      |> Enum.map(& &1.header.name)
     end
   end
 end

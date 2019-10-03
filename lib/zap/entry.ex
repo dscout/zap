@@ -58,8 +58,6 @@ defmodule Zap.Entry do
     take = binary_part(binary, 0, bytes)
     keep = binary_part(binary, bytes, size - bytes)
 
-    IO.inspect([bytes, byte_size(take), byte_size(keep)])
-
     {%{entry | binary: keep, size: byte_size(keep)}, take}
   end
 
