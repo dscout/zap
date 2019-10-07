@@ -168,7 +168,7 @@ defmodule Zap do
     chunk_fun = fn {name, data}, zap ->
       zap = entry(zap, name, data)
 
-      if bytes(zap) > chunk_size do
+      if bytes(zap) >= chunk_size do
         {zap, flushed} = flush(zap, :all)
 
         {:cont, flushed, zap}
