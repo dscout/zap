@@ -1,27 +1,64 @@
 defmodule Zap do
   @moduledoc """
-  Chunkable zip generation.
+  Native ZIP archive creation with chunked input and output.
+
+  Erlang/OTP provides powerful the `:zip` and `:zlib` modules, but they can only create an archive
+  all at once. That requires _all_ of the data to be kept in memory or written to disk. What if
+  you don't have enough space to keep the file in memory or on disk? With Zap you can add files
+  one at a time while writing chunks of data at the same time.
+
+  ## Examples
+
+  Create a ZIP by adding a single entry at a time:
+
+  ```elixir
+  iodata =
+    Zap.new()
+    |> Zap.entry("a.txt", a_binary)
+    |> Zap.entry("b.txt", some_iodata)
+    |> Zap.entry("c.txt", more_iodata)
+    |> Zap.to_iodata()
+
+  File.write!("archive.zip", iodata, [:binary, :raw])
+  ```
+
+  Use `into` support from the `Collectable` protocol to build a ZIP dynamically:
+
+  ```elixir
+  iodata =
+    "*.*"
+    |> Path.wildcard()
+    |> Enum.map(fn path -> {Path.basename(path), File.read!(path)} end)
+    |> Enum.into(Zap.new())
+    |> Zap.to_iodata()
+
+  File.write!("files.zip", iodata, [:binary, :raw])
+  ```
+
+  Use `Zap.into_stream/2` to incrementally build a ZIP by chunking files into an archive:
+
+  ```elixir
+  one_mb = 1024 * 1024
+
+  write_fun = &File.write!("streamed.zip", &1, [:append, :binary, :raw])
+
+  file_list
+  |> Stream.map(fn path -> {Path.basename(path), File.read!(path)} end)
+  |> Zap.into_stream(one_mb)
+  |> Stream.each(write_fun)
+  |> Stream.run()
+  ```
 
   ## Glossary
+
+  The entry and header bytes are composed based on the [ZIP specification provided by
+  PKWare](https://pkware.cachefly.net/webdocs/casestudies/APPNOTE.TXT). Some helpful terms
+  that you may encounter in the function documentation:
 
   * LFH (Local File Header) — Included before each file in the archive. The header contains
   details about the name and size of the entry.
   * CDH (Central Directory Header) — The final bits of an archive, this contains summary
   information about the files contained within the archive.
-
-  # We need to keep track of several different things here, right?
-  #
-  # 1. Entry binary
-  # 2. Entry metadata
-  # 3. The amount of binary that has been read so far
-  #
-  # | name | binary | size | read |
-  # | ---- | ------ | ---- | ---- |
-  # | a    | "abcd" | 4    | 4    |
-  # | b    | "efg"  | 3    | 1    |
-  # | c    | "ijkl" | 4    | 0    |
-  #
-  # flush(4) -> "fgij"
   """
 
   alias Zap.{Directory, Entry}
@@ -95,7 +132,7 @@ defmodule Zap do
       ...> |> IO.iodata_length()
       248
   """
-  @spec to_iodata(zap :: t()) :: iodata()
+  @spec to_iodata(zap :: t()) :: iolist()
   def to_iodata(%__MODULE__{} = zap) do
     {zap, flush} = flush(zap)
     {_ap, final} = final(zap)
