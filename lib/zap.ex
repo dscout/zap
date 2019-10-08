@@ -92,16 +92,15 @@ defmodule Zap do
       ...> |> Zap.entry("a.txt", "aaaa")
       ...> |> Zap.entry("b.txt", "bbbb")
       ...> |> Zap.to_iodata()
-      ...> |> elem(1)
       ...> |> IO.iodata_length()
       248
   """
-  @spec to_iodata(zap :: t()) :: {t(), iodata()}
+  @spec to_iodata(zap :: t()) :: iodata()
   def to_iodata(%__MODULE__{} = zap) do
     {zap, flush} = flush(zap)
-    {zap, final} = final(zap)
+    {_ap, final} = final(zap)
 
-    {zap, [flush, final]}
+    [flush, final]
   end
 
   @doc """
@@ -178,7 +177,7 @@ defmodule Zap do
     end
 
     after_fun = fn zap ->
-      {zap, iodata} = to_iodata(zap)
+      iodata = to_iodata(zap)
 
       {:cont, iodata, zap}
     end

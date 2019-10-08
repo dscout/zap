@@ -11,11 +11,9 @@ defmodule ZapTest do
 
       assert Zap.bytes(zap) > 0
 
-      {zap, iodata} = Zap.to_iodata(zap)
-
-      assert Zap.bytes(zap) == 0
-
-      verify_zipinfo(iodata)
+      zap
+      |> Zap.to_iodata()
+      |> verify_zipinfo()
     end
   end
 
