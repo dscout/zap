@@ -72,6 +72,7 @@ defmodule Zap do
 
   The struct is used to accumulate entries, which can then be flushed as parts of a zip file.
   """
+  @doc since: "0.1.0"
   @spec new() :: t()
   def new do
     %__MODULE__{}
@@ -86,6 +87,7 @@ defmodule Zap do
       |> Zap.entry("a.jpg", jpg_data)
       |> Zap.entry("b.png", png_data)
   """
+  @doc since: "0.1.0"
   @spec entry(zap :: t(), name :: binary(), data :: binary()) :: t()
   def entry(%__MODULE__{} = zap, name, data) when is_binary(name) and is_binary(data) do
     %{zap | entries: List.flatten([zap.entries | [Entry.new(name, data)]])}
@@ -110,6 +112,7 @@ defmodule Zap do
       ...> Zap.bytes(zap)
       0
   """
+  @doc since: "0.1.0"
   @spec bytes(zap :: t()) :: non_neg_integer()
   def bytes(%__MODULE__{entries: entries}) do
     Enum.reduce(entries, 0, &(&1.size + &2))
@@ -132,6 +135,7 @@ defmodule Zap do
       ...> |> IO.iodata_length()
       248
   """
+  @doc since: "0.1.0"
   @spec to_iodata(zap :: t()) :: iolist()
   def to_iodata(%__MODULE__{} = zap) do
     {zap, flush} = flush(zap)
@@ -155,6 +159,7 @@ defmodule Zap do
       ...> |> IO.iodata_length()
       110
   """
+  @doc since: "0.1.0"
   @spec flush(zap :: t(), bytes :: pos_integer() | :all) :: {t(), iodata()}
   def flush(%__MODULE__{entries: entries} = zap, bytes \\ :all) do
     {flushed, entries, _} =
@@ -177,6 +182,7 @@ defmodule Zap do
   @doc """
   Generate the final CDH (Central Directory Header), required to complete an archive.
   """
+  @doc since: "0.1.0"
   @spec final(zap :: t()) :: {t(), iodata()}
   def final(%__MODULE__{entries: entries} = zap) do
     {zap, Directory.encode(entries)}
@@ -199,6 +205,7 @@ defmodule Zap do
       ...> |> elem(0)
       :ok
   """
+  @doc since: "0.1.0"
   @spec into_stream(enum :: Enumerable.t(), chunk_size :: pos_integer()) :: Enumerable.t()
   def into_stream(enum, chunk_size \\ 1024 * 1024) when is_integer(chunk_size) do
     chunk_fun = fn {name, data}, zap ->
