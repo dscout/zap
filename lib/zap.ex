@@ -2,7 +2,7 @@ defmodule Zap do
   @moduledoc """
   Native ZIP archive creation with chunked input and output.
 
-  Erlang/OTP provides powerful the `:zip` and `:zlib` modules, but they can only create an archive
+  Erlang/OTP provides the powerful `:zip` and `:zlib` modules, but they can only create an archive
   all at once. That requires _all_ of the data to be kept in memory or written to disk. What if
   you don't have enough space to keep the file in memory or on disk? With Zap you can add files
   one at a time while writing chunks of data at the same time.
