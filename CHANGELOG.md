@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Fixed
+
+- [Zap.Entry] Correct the general purpose bit flag, it must be `8` and not
+  `0x008`. This allows unarchiving utilities to correctly extract files from the
+  archive.
+
 ## [0.1.0] - 2019-10-07
 
 - [Zap] Initial release with base functionality.

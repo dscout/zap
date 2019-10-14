@@ -65,7 +65,7 @@ defmodule Zap do
 
   @type t :: %__MODULE__{entries: [Entry.t()]}
 
-  defstruct entries: []
+  defstruct compression: 0, entries: []
 
   @doc """
   Initialize a new Zap struct.
@@ -74,8 +74,10 @@ defmodule Zap do
   """
   @doc since: "0.1.0"
   @spec new() :: t()
-  def new do
-    %__MODULE__{}
+  def new(opts \\ []) do
+    # TODO: validate compression
+
+    struct!(__MODULE__, opts)
   end
 
   @doc """

@@ -71,7 +71,7 @@ defmodule Zap.Entry do
       # version needed to extract
       20::little-size(16),
       # general purpose bit flag
-      0x0800::little-size(16),
+      8::little-size(16),
       # compression method (always 0, we aren't compressing currently)
       0::little-size(16),
       # last mod time
