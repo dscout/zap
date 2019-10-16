@@ -31,7 +31,7 @@ defmodule Zap.Directory do
       @comment
     >>
 
-    IO.iodata_to_binary([context.frames, frame])
+    [Enum.reverse(context.frames), frame]
   end
 
   defp build_context(entries) do
@@ -56,8 +56,8 @@ defmodule Zap.Directory do
       52::little-size(16),
       # version to extract
       20::little-size(16),
-      # general purpose flag
-      0x0800::little-size(16),
+      # general purpose bit flag (bit 3: data descriptor, bit 11: utf8 name)
+      <<0x0008 ||| 0x0800::little-size(16)>>,
       # compression method
       0::little-size(16),
       # last mod file time
@@ -81,7 +81,7 @@ defmodule Zap.Directory do
       # internal file attribute
       0::little-size(16),
       # external file attribute (unix permissions, rw-r--r--)
-      (0o10 <<< 12 ||| (0o644 &&& 0o7777)) <<< 16::little-size(32),
+      (0o10 <<< 12 ||| 0o644) <<< 16::little-size(32),
       # relative offset header
       context[:offset]::little-size(32),
       # file name

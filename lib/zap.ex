@@ -75,8 +75,6 @@ defmodule Zap do
   @doc since: "0.1.0"
   @spec new() :: t()
   def new(opts \\ []) do
-    # TODO: validate compression
-
     struct!(__MODULE__, opts)
   end
 
@@ -175,10 +173,10 @@ defmodule Zap do
             true -> 0
           end
 
-        {[binary | iodata], [entry | entries], next_bytes}
+        {[iodata | binary], [entry | entries], next_bytes}
       end)
 
-    {%{zap | entries: Enum.reverse(entries)}, Enum.reverse(flushed)}
+    {%{zap | entries: Enum.reverse(entries)}, flushed}
   end
 
   @doc """

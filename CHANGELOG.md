@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Fixed
 
+- [Zap.Directory] Reverse the order of file headers in the central directory.
+  This allows naive tools (like Archive Utility on MacOS) to correctly extract
+  the zip.
+
 - [Zap.Entry] Correct the general purpose bit flag, it must be `8` and not
   `0x008`. This allows unarchiving utilities to correctly extract files from the
   archive.
