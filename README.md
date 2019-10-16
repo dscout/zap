@@ -9,7 +9,7 @@ The package can be installed by adding `zap` to your list of dependencies in `mi
 ```elixir
 def deps do
   [
-    {:zap, "~> 0.1.0"}
+    {:zap, "~> 0.2"}
   ]
 end
 ```
