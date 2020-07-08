@@ -32,13 +32,12 @@ defmodule Zap.Entry do
 
     binary = IO.iodata_to_binary([hframe, data, eframe])
 
-    struct(
-      __MODULE__,
+    %__MODULE__{
       binary: binary,
       header: header,
       entity: entity,
       size: byte_size(binary)
-    )
+    }
   end
 
   @spec consume(entry :: t(), bytes :: :all | pos_integer()) :: {t(), binary()}
