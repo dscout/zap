@@ -13,7 +13,7 @@ defmodule IntegrationTest do
 
     File.write!("tmp/files.zip", iodata, [:binary, :raw])
 
-    System.cmd("unzip", ["files.zip"], cd: "tmp")
+    {_, 0} = System.cmd("unzip", ["files.zip"], cd: "tmp")
 
     assert Path.wildcard("tmp/*.txt") == ["tmp/a.txt", "tmp/b.txt", "tmp/c.txt"]
 

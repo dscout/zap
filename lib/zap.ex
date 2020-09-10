@@ -104,7 +104,7 @@ defmodule Zap do
       iex> Zap.new()
       ...> |> Zap.entry("a.txt", "a")
       ...> |> Zap.bytes()
-      52
+      92
 
       iex> zap = Zap.new()
       ...> zap = Zap.entry(zap, "a.txt", "a")
@@ -133,7 +133,7 @@ defmodule Zap do
       ...> |> Zap.entry("b.txt", "bbbb")
       ...> |> Zap.to_iodata()
       ...> |> IO.iodata_length()
-      248
+      468
   """
   @doc since: "0.1.0"
   @spec to_iodata(zap :: t()) :: iolist()
@@ -157,7 +157,7 @@ defmodule Zap do
       ...> |> Zap.flush()
       ...> |> elem(1)
       ...> |> IO.iodata_length()
-      110
+      190
   """
   @doc since: "0.1.0"
   @spec flush(zap :: t(), bytes :: pos_integer() | :all) :: {t(), iodata()}
@@ -197,13 +197,10 @@ defmodule Zap do
 
   ## Example
 
-      iex> %{"a.txt" => "aaaa", "b.txt" => "bbbb"}
-      ...> |> Zap.into_stream(8)
-      ...> |> Enum.to_list()
-      ...> |> IO.iodata_to_binary()
-      ...> |> :zip.table()
-      ...> |> elem(0)
-      :ok
+      %{"a.txt" => "aaaa", "b.txt" => "bbbb"}
+      |> Zap.into_stream(8)
+      |> Enum.to_list()
+      |> IO.iodata_to_binary()
   """
   @doc since: "0.1.0"
   @spec into_stream(enum :: Enumerable.t(), chunk_size :: pos_integer()) :: Enumerable.t()

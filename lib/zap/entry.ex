@@ -65,11 +65,29 @@ defmodule Zap.Entry do
     nsize = byte_size(name)
     mtime = NaiveDateTime.from_erl!(:calendar.local_time())
 
+    # TODO: Use a real offset
+    offset = 0
+
+    extra = <<
+      # extra tag
+      0x0001::little-size(16),
+      # size of this extra block
+      28::little-size(16),
+      # uncompressed size
+      0::little-size(64),
+      # compressed size
+      0::little-size(64),
+      # offset of local header
+      offset::little-size(64),
+      # number of disk where file starts
+      0::little-size(32)
+    >>
+
     frame = <<
       # local file header signature
       0x04034B50::little-size(32),
-      # version needed to extract
-      20::little-size(16),
+      # version needed to extract, with Zip64 support
+      45::little-size(16),
       # general purpose bit flag (bit 3: data descriptor, bit 11: utf8 name)
       <<0x0008 ||| 0x0800::little-size(16)>>,
       # 8::little-size(16),
@@ -88,9 +106,11 @@ defmodule Zap.Entry do
       # file name length
       nsize::little-size(16),
       # extra field length
-      0::little-size(16),
+      byte_size(extra)::little-size(16),
       # file name
-      name::binary
+      name::binary,
+      # extra field for zip64
+      extra::binary
     >>
 
     {frame, %{size: byte_size(frame), name: name, nsize: nsize}}
@@ -106,9 +126,9 @@ defmodule Zap.Entry do
       # crc-32 for the entity
       crc::little-size(32),
       # compressed size, just the size since we aren't compressing
-      size::little-size(32),
+      size::little-size(64),
       # uncompressed size
-      size::little-size(32)
+      size::little-size(64)
     >>
 
     {frame, %{crc: crc, size: size + byte_size(frame), usize: size, csize: size}}

@@ -37,14 +37,28 @@ defmodule ZapTest do
     binary(min_length: 1)
   end
 
-  defp verify_zipinfo(data) do
-    assert {:ok, comment_and_files} = :zip.table(IO.iodata_to_binary(data))
+  # Testing with `unzip -t` generates output like this:
+  #
+  # Archive:  tmp.zip
+  # Created by Zap
+  #     testing: a.txt                    OK
+  #     testing: b.txt                    OK
+  #     testing: c.txt                    OK
+  # No errors detected in compressed data of files.zip.
+  defp verify_zipinfo(iodata) do
+    File.write!("tmp.zip", iodata, [:binary, :raw])
 
-    file_count =
-      comment_and_files
-      |> Enum.map(&elem(&1, 0))
-      |> Enum.count(fn kind -> kind == :zip_file end)
+    {output, 0} = System.cmd("unzip", ["-t", "tmp.zip"])
 
-    assert file_count >= 1
+    output
+    |> String.split("\n", trim: true)
+    |> Enum.drop(1)
+    |> Enum.each(&verify_healthy/1)
+  after
+    File.rm_rf("tmp.zip")
   end
+
+  defp verify_healthy("Created by Zap"), do: :ok
+  defp verify_healthy("    testing: " <> entry), do: assert entry =~ "OK"
+  defp verify_healthy("No errors detected in compressed data" <> _), do: :ok
 end
